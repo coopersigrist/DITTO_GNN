@@ -1,4 +1,5 @@
 import os.path as osp
+import os
 
 import pickle
 import torch
@@ -19,8 +20,6 @@ def nor(in1, in2):
 def dumb_not(in1, in2):
     return 1 - in1
 
-
-
 class EZData():
 
     def __init__(self, n_data=1000, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1): # ("not" : dumbnot) has been removed for batching issues temporarily
@@ -35,7 +34,10 @@ class EZData():
 
     def loader(self):
 
-        picklefile = open('../Data/Simple_Gates/batch_size_'+str(self.batch_size), 'rb')
+        data_path = '../Data/Simple_Gates/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
+
+        setup(1000, self.batch_size)
+        picklefile = open(data_path, 'rb')
         data = pickle.load(picklefile)
         picklefile.close()
 
@@ -46,36 +48,6 @@ class EZData():
 
     
        
-# class BinTree():
-
-''' 
-WORK IN PROGRESS
-
-class to generate arbitrarily sized AST of gate-level operations
-'''
-
-#     def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor, "not":dumb_not}, batch_size=1, n_leafs=8):
-
-#         self.gate_dict = gate_dict
-#         self.batch_size = batch_size
-#         self.n_leafs = n_leafs
-
-#     def __iter__(self):
-#         return self
-    
-#     def __next__(self):
-
-#         dat_batch_list = []
-#         y_batch_list = []
-
-#         for b in range(self.batch_size):
-
-#     def gen_tree(self):
-
-#         for i in range(np.log2(self.n_leafs)):
-
-#             for j in range(self.n_leafs // 2):
-
 
 
 

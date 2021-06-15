@@ -12,6 +12,7 @@ import torch.nn as nn
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from operator import xor, iand, ior
+from itertools import chain
 
 def nand(in1, in2):
     return int(not(in1 and in2))
@@ -23,15 +24,16 @@ def dumb_not(in1, in2):
     return 1 - in1
 
 
+def setup(n_data, batch_size, path='../Data/Simple_Gates'):
 
-def setup(n_data, batch_size):
+    path += "/" + str(batch_size) + "/"
 
-    if not os.path.exists('../Data/Simple_Gates'):
-        os.makedirs('../Data/Simple_Gates')
+    if not os.path.exists(path):
+        os.makedirs(path)
     
-        gen_EzData(n_data, batch_size)    
+        gen_EzData(n_data, batch_size, path)    
 
-def gen_EzData(n_data, batch_size):
+def gen_EzData(n_data, batch_size, path):
 
     generator = EZData_gen(batch_size=batch_size)
 
@@ -40,7 +42,7 @@ def gen_EzData(n_data, batch_size):
     for i in range(n_data):
         data_list.append(next(generator))
 
-    picklefile = open('../Data/Simple_Gates/batch_size_'+str(batch_size), 'wb')
+    picklefile = open(path + 'batch_size_'+str(batch_size), 'wb')
     pickle.dump(data_list, picklefile)
     picklefile.close()
 
@@ -77,13 +79,10 @@ class EZData_gen():
             in1 = random.choice([0,1])
             in2 = random.choice([0,1]) # This wont exist for "not" gate, but we find it cause Im lazy
 
-            y = gate(in1, in2) # This is the output/root of the "AST"
+            y = self.encode(gate(in1, in2)) # This is the output/root of the "AST"
 
-            node1 = np.zeros(len(self.gate_dict) + 1)
-            node1[0] = in1
-            node2 = np.zeros(len(self.gate_dict) + 1)
-            node2[0] = in2
-
+            node1 = self.encode(in1)
+            node2 = self.encode(in2)
             node0 = self.encode(gate_name)
 
             if gate_name != "not":
@@ -99,7 +98,7 @@ class EZData_gen():
                 return dat, [y]
 
             dat_batch_list.append(dat)
-            y_batch_list.append([y])
+            y_batch_list.append(y)
 
         return Batch.from_data_list(dat_batch_list), y_batch_list
 
@@ -109,15 +108,150 @@ class EZData_gen():
         Simple one-hot encoding -- values (0 or 1) are also encoded as [0,0 ... 0] and [1, 0 ... 0] respectively
         '''
 
-        ind = self.gate_name_list.index(gate_name)
+        if gate_name in [0,1]:
+            gate_encoding = np.zeros(len(self.gate_dict) + 1)
+            gate_encoding[0] = gate_name
 
-        gate_encoding = np.zeros(len(self.gate_dict) + 1)
-        gate_encoding[ind+1] = 1
+        elif gate_name in self.gate_name_list: 
+            ind = self.gate_name_list.index(gate_name)
+            gate_encoding = np.zeros(len(self.gate_dict) + 1)
+            gate_encoding[ind+1] = 1
+        
+        else:
+            raise Exception("Tried to encode" + str(gate_name) + "which is both non-binary and not a valid gate operation")
+
+        return gate_encoding
+
+def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree'):
+
+    path += "/" + str(depth) + "/" +str(batch_size) + "/"
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+        gen_BalancedTree_data(n_data, batch_size, depth, path) 
+
+def gen_BalancedTree_data(n_data, batch_size, depth, path):
+
+    generator = BalancedTree_gen(batch_size=batch_size, depth=depth)
+
+    data_list = []
+
+    for i in range(n_data):
+        data_list.append(next(generator))
+
+    picklefile = open(path + 'batch_size_'+str(batch_size), 'wb')
+    pickle.dump(data_list, picklefile)
+    picklefile.close()
+
+class BalancedTree_gen():
+
+    ''' 
+    Generates a balanced tree of encoded nodes with all leaves being binary values and all other 
+    nodes being gate operations from the gate_dict
+
+    '''
+
+    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3):
+
+        self.gate_dict = gate_dict
+        self.num_node_features = len(self.gate_dict) + 1
+        self.depth = depth
+        self.gate_name_list = list(self.gate_dict.keys())
+        self.batch_size=batch_size
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+
+        return self.gen_tree()
+
+    def gen_tree(self):
+
+        layers = [] # list of lists of the encodings of nodes of each layer -- e.g. layers[0] will be the encoding of the root
+        layers_ops = [] # Same as layers, but unencoded for manual evaluation
+
+        node_count = 0
+
+        for i in range(self.depth):
+
+            nodes = []
+            ops = []
+
+            for j in range(pow(2, i)):
+
+
+                # Determines if we are generating leaf nodes (which are 0 or 1)
+                if i == self.depth - 1:
+                    val = random.choice([0,1]) # Chooses Random Leaf value
+                    nodes.append(self.encode(val)) # Econdes this val
+                    ops.append(val) # Saves the actual value for easier evaluation
+
+                # If not, we generate a gate operation
+                else: 
+                    gate_name, _ = random.choice(list(self.gate_dict.items()))
+                    nodes.append(self.encode(gate_name))
+                    ops.append(gate_name)
+
+                node_count += 1
+            
+            layers.append(nodes)
+            layers_ops.append(ops)
+        
+        y = self.evaluate(layers_ops)
+        
+        return layers, y
+    
+    def evaluate(self, layers_ops):
+        '''
+        Takes a list of list of all operations and values of our generated bin tree
+        and evaluates it to a bit
+
+        The structure of layer ops is: 
+
+        layers_ops[0] is the root
+        layers_ops[1] is the inputs to the root -- generally going to be names of gate operations from the gate_dict
+        ...
+        layers_ops[-1] is a list of the leaves' values (in bits)
+        '''
+
+        # print(layers_ops)
+
+
+        for i in range(self.depth-1, 0, -1):
+
+            for j, val in enumerate(layers_ops[i-1]):
+
+                
+                gate = self.gate_dict[val]
+                layers_ops[i-1][j] = gate(layers_ops[i][(j*2)], layers_ops[i][(j*2)+1])
+
+        return layers_ops[0][0]
+
+
+    def encode(self, gate_name):
+
+        '''
+        Simple one-hot encoding -- values (0 or 1) are also encoded as [0,0 ... 0] and [1, 0 ... 0] respectively
+        '''
+
+        if gate_name in [0,1]:
+            gate_encoding = np.zeros(len(self.gate_dict) + 1)
+            gate_encoding[0] = gate_name
+
+        elif gate_name in self.gate_name_list: 
+            ind = self.gate_name_list.index(gate_name)
+            gate_encoding = np.zeros(len(self.gate_dict) + 1)
+            gate_encoding[ind+1] = 1
+        
+        else:
+            raise Exception("Tried to encode" + str(gate_name) + "which is both non-binary and not a valid gate operation")
 
         return gate_encoding
 
 
 if __name__ == "__main__":
 
-    setup()
-    gen_EzData(1000, 32)
+    # setup(n_data=1000, batch_size=12, path='Data/Simple_Gates')
+    setup_tree(n_data=1000, batch_size=1, depth=3, path='/Data/Balanced_tree')
