@@ -72,14 +72,38 @@ i=0
 correct = 0
 total = 0
 for (x,y) in test_data:
-    out = model(x)
-    out = torch.sigmoid(out[0][0]) > 0.5
-    print("output:",out," Label:", y[0][0])
-    correct += (out == y[0][0])
-    total += 1
 
+    out = model(x).index_select(0, mask)
+    for ind in range(len(y)): 
+        single_out = torch.sigmoid(out[ind][0]) > 0.5
+        print("output:",single_out," Label:", y[ind][0])
+        correct += (int(single_out) == y[ind][0])
+        total += 1
+
+print("correct:",correct,"total:",total)
 print("test acc:", correct/total)
 
 
+def simplest_test(model):
 
+    model.eval()
+    x = torch.tensor([[0,0,0,1,0,0],[0,0,0,0,0,0],[1,0,0,0,0,0]], dtype=torch.float)
+    edge_index = torch.tensor([[1,2], [0,0]], dtype=torch.long)
+    dat = Data(x=x, edge_index=edge_index)
+
+    out = model(dat)
+
+    mask = torch.from_numpy(np.arange(1) * 3)
+
+    print(out)
+
+    out = out.index_select(0, mask)
+
+    print(out)
+
+    out = torch.sigmoid(out[0][0]) > 0.5
+
+    print(out)
+
+simplest_test(model)
 torch.save(model.state_dict(), "../Trained_models/gate_level.pt")

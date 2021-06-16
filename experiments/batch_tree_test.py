@@ -1,11 +1,11 @@
 import sys
 import torch
+import time
 import numpy as np
 import torch.nn.functional as F
 import torch.nn as nn
-import plotly.graph_objects as go
 from torch_geometric.data import Data, Batch
-from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
 sys.path.append('../')
 from data_generator import BalancedTree_gen
 from tqdm import tqdm
@@ -13,7 +13,7 @@ from Models.simple_gate_level import Simple_GNN
 
 
 
-def test_model(path="../Trained_models/100_percent_model.pt", n_test=50):
+def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
     
     correct = 0
     num_node_features = 6
@@ -22,26 +22,47 @@ def test_model(path="../Trained_models/100_percent_model.pt", n_test=50):
     model.load_state_dict(torch.load(path))
     model.eval()
 
-    data = BalancedTree_gen(depth=2)
+    depths = [2,3,4,5,6,7]
+    times = np.ones(len(depths))
+    perfs = np.ones(len(depths))
 
-    correct = 0
+    for d, depth in enumerate(depths):
 
-    for i in range(n_test):
+        data = BalancedTree_gen(depth=depth)
 
-        # simplest_test(model)  # When model wasn't loading correctly this was useful debugging
-        layers,y = next(data)
-        saved_layers = layers.copy()
-        out = batched_forward(layers, model)
+        total_time = 0
+        correct = 0
+
+        for i in range(n_test):
+
+            # simplest_test(model)  # When model wasn't loading correctly this was useful debugging
+            layers,y = next(data)
+
+            start = time.perf_counter()
+            out = batched_forward(layers, model)
+            stop = time.perf_counter()
+
+            # print("out:", out, "label:", y)
+
+            correct += (out == y)
+            total_time += stop - start
         
+        times[d] = total_time
+        perfs[d] = (correct/n_test) * 100
 
-        print("out:", out, "label:", y)
+        print("got",correct,"out of",n_test,"  for",(correct/n_test) * 100,"%", "on depth:", depth) 
 
-        if out == y:
-            correct += 1
-        else:
-            print(saved_layers)
+    print("times =", times )
 
-    print("got",correct,"out of",n_test,"  for",(correct/n_test) * 100,"%") 
+    fig, ax = plt.subplots()
+    ax.plot(depths, times)
+
+    ax.set(xlabel='Depth of tree', ylabel='Time to simulate (s)',
+        title='Time to simulate gate-level balanced AST by depth with batch method')
+    ax.grid()
+
+    fig.savefig("../Plots/small_balanced_tree_times.png")
+    plt.show()
 
 def batched_forward(layers, model):
 
@@ -82,20 +103,24 @@ def batched_forward(layers, model):
 
 def simplest_test(model):
 
-    x = torch.tensor([[0,0,0,0,1,0],[0,0,0,0,0,0],[0,0,0,0,0,0]], dtype=torch.float)
-    edge_index = torch.tensor([[1,0], [2,0]], dtype=torch.long)
+    x = torch.tensor([[0,0,0,1,0,0],[0,0,0,0,0,0],[1,0,0,0,0,0]], dtype=torch.float)
+    edge_index = torch.tensor([[1,2], [0,0]], dtype=torch.long)
     dat = Data(x=x, edge_index=edge_index)
 
     out = model(dat)
 
+    print(out)
+
     out = torch.sigmoid(out[0][0]) > 0.5
+
+    print(out)
 
 
 
 def batch_layers(layers):
 
     batch_data = []
-    adj_list = torch.tensor([[1,0], [2,0]], dtype=torch.long)
+    adj_list = torch.tensor([[1,2], [0,0]], dtype=torch.long)
 
     for i, node in enumerate(layers[-2]):
 

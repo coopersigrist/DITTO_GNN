@@ -60,8 +60,6 @@ class EZData_gen():
         self.gate_dict = gate_dict
         self.num_node_features = len(self.gate_dict) + 1
         self.num_classes = 2
-        self.input_encoding = np.zeros(len(self.gate_dict) + 1)
-        self.input_encoding[0] = 1
         self.gate_name_list = list(self.gate_dict.keys())
         self.batch_size=batch_size
 
@@ -152,13 +150,14 @@ class BalancedTree_gen():
 
     '''
 
-    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3):
+    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False):
 
         self.gate_dict = gate_dict
         self.num_node_features = len(self.gate_dict) + 1
         self.depth = depth
         self.gate_name_list = list(self.gate_dict.keys())
         self.batch_size=batch_size
+        self.print_vals = print_vals
 
     def __iter__(self):
         return self
@@ -199,6 +198,9 @@ class BalancedTree_gen():
             layers.append(nodes)
             layers_ops.append(ops)
         
+        if self.print_vals:
+            print(layers_ops)
+            
         y = self.evaluate(layers_ops)
         
         return layers, y
