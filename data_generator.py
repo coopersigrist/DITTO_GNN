@@ -2,6 +2,7 @@ import sys
 import os
 import pickle
 
+import time
 import torch
 import random
 import torch.nn.functional as F
@@ -199,11 +200,15 @@ class BalancedTree_gen():
             layers_ops.append(ops)
         
         if self.print_vals:
-            print(layers_ops)
-            
-        y = self.evaluate(layers_ops)
+            self.print_layers_vals(layers_ops)
         
-        return layers, y
+        start = time.perf_counter()
+        y = self.evaluate(layers_ops)
+        stop = time.perf_counter()
+
+        eval_time = stop-start
+        
+        return np.array(layers), y, eval_time
     
     def evaluate(self, layers_ops):
         '''
@@ -251,6 +256,12 @@ class BalancedTree_gen():
             raise Exception("Tried to encode" + str(gate_name) + "which is both non-binary and not a valid gate operation")
 
         return gate_encoding
+
+    def print_layers_vals(self, layers_vals):
+
+        for d in range(len(layers_vals)):
+            print()
+            print(layers_vals[d])
 
 
 if __name__ == "__main__":

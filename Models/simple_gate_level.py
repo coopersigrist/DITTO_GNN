@@ -8,8 +8,8 @@ class Simple_GNN(torch.nn.Module):
     def __init__(self, num_node_features):
         super(Simple_GNN, self).__init__()
 
-        self.conv1 = GCNConv(num_node_features, 500)
-        self.conv2 = GCNConv(500, 1)
+        self.conv1 = GCNConv(num_node_features, 10)
+        self.conv2 = GCNConv(10, 1)
         self.pad = nn.ConstantPad1d((0,num_node_features-1), 0)
 
     def forward(self, data):
