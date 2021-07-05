@@ -11,8 +11,8 @@ from data_generator import BalancedTree_gen
 from tqdm import tqdm
 from Models.simple_gate_level import Simple_GNN
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
     
     correct = 0
@@ -24,7 +24,7 @@ def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
     model.eval()
 
 
-    depths = np.arange(22) + 2
+    depths = np.arange(17) + 2
     sim_times = np.ones(len(depths))
     batch_times = np.zeros(len(depths))
     forward_times = np.zeros(len(depths))
@@ -65,19 +65,21 @@ def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
 
         print("got",correct,"out of",n_test,"  for",(correct/n_test) * 100,"%", "on depth:", depth) 
 
+    diffs = eval_times-forward_times
+
+    print(diffs)
+
     fig, ax = plt.subplots()
-    ax.plot(depths, eval_times, label="Python Interpreter")
+    ax.plot(depths, diffs, label="Time Difference")
     # ax.plot(depths, batch_times, label="Time used to batch")
-    ax.plot(depths, forward_times, label="GNN forward")
+    # ax.plot(depths, forward_times, label="GNN forward")
     # ax.plot(depths, mask_times, label="Time to mask/encode output")
     # ax.plot(depths, sim_times, label="Batched GNN")
 
     ax.set(xlabel='Depth of tree', ylabel='Time to evaluate (s)',
-        title='Time to simulate gate-level balanced AST by depth -- ignoring batch creation time')
+        title='Temp')
     ax.grid()
     ax.legend()
-
-    plt.yscale('log')
 
     fig.savefig("../Plots/You didnt change the title.png")
     plt.show()

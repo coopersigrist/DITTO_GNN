@@ -121,7 +121,7 @@ class EZData_gen():
 
         return gate_encoding
 
-def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree'):
+def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree', collapsed=False):
 
     path += "/" + str(depth) + "/" +str(batch_size) + "/"
 
@@ -132,7 +132,7 @@ def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree'):
 
 def gen_BalancedTree_data(n_data, batch_size, depth, path):
 
-    generator = BalancedTree_gen(batch_size=batch_size, depth=depth)
+    generator = BalancedTree_gen(batch_size=batch_size, depth=depth, print_vals=False, collapsed=True)
 
     data_list = []
 
@@ -151,7 +151,7 @@ class BalancedTree_gen():
 
     '''
 
-    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False):
+    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False, collapsed=False):
 
         self.gate_dict = gate_dict
         self.num_node_features = len(self.gate_dict) + 1
@@ -159,13 +159,24 @@ class BalancedTree_gen():
         self.gate_name_list = list(self.gate_dict.keys())
         self.batch_size=batch_size
         self.print_vals = print_vals
+        self.collapsed = collapsed
 
     def __iter__(self):
         return self
     
     def __next__(self):
 
-        return self.gen_tree()
+        x_batch = []
+        y_batch = []
+        time_batch = []
+
+        for b in range(self.batch_size):
+            x,y,t = self.gen_tree()
+            x_batch.append(x)
+            y_batch.append(y)
+            time_batch.append(t)
+
+        return Batch.from_data_list(x_batch), y_batch, time_batch
 
     def gen_tree(self):
 
@@ -207,8 +218,17 @@ class BalancedTree_gen():
         stop = time.perf_counter()
 
         eval_time = stop-start
-        
-        return np.array(layers), y, eval_time
+
+        x = np.array(layers)
+
+        if self.collapsed:
+            x = self.collapse(x)
+
+            label = np.zeros(self.num_node_features)
+            label[0] = y
+            y = label
+
+        return x, y, eval_time
     
     def evaluate(self, layers_ops):
         '''
@@ -235,6 +255,43 @@ class BalancedTree_gen():
                 layers_ops[i-1][j] = gate(layers_ops[i][(j*2)], layers_ops[i][(j*2)+1])
 
         return layers_ops[0][0]
+
+    def collapse(self, layers):
+
+        '''
+        Collapses the full balanced tree into a single node (which will be a pytorch Geometric Data object instead of lists)
+
+        i.e. a OR of (AND of 1 and 0) and (XOR of 1 and 1 ) would be a node with input 1,0,1,1 and and ecoding of all the gates used
+        '''
+
+        new_input_list = []
+        gate_encoding = []
+        edge_index = []
+
+        # appends each gate operation to the new_input list (in order from top-> bottom, left-> right)
+        for layer in layers[:-1]:
+            for elem in layer:
+                for bit in elem:
+                    gate_encoding.append(bit)
+        
+        self.num_node_features = len(gate_encoding)
+        new_input_list.append(gate_encoding)
+
+        # appends each of the inputs in order from left to right
+        for elem in layers[-1]:
+            new_in = np.zeros(self.num_node_features)
+            new_in[0] = elem[0]
+            new_input_list.append(new_in)
+
+        for num in range(len(new_input_list) - 1):
+            edge_index.append([num+1, 0])
+
+        x = torch.tensor(new_input_list, dtype=torch.float)
+        edge_list = torch.tensor(edge_index, dtype=torch.long)
+
+        dat = Data(x=x, edge_index=edge_list.t().contiguous())
+        
+        return dat
 
 
     def encode(self, gate_name):
@@ -267,4 +324,4 @@ class BalancedTree_gen():
 if __name__ == "__main__":
 
     # setup(n_data=1000, batch_size=12, path='Data/Simple_Gates')
-    setup_tree(n_data=1000, batch_size=1, depth=3, path='/Data/Balanced_tree')
+    setup_tree(n_data=1000, batch_size=32, depth=3, path='/Data/Collapsed_Balanced_tree', collapsed=True)

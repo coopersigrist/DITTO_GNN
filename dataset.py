@@ -8,7 +8,7 @@ import numpy as np
 import csv
 import pandas as pd
 from torch_geometric.data import Data, Batch
-from data_generator import setup
+from data_generator import setup, setup_tree
 from operator import xor, iand, ior
 
 def nand(in1, in2):
@@ -43,6 +43,32 @@ class EZData():
 
         train_data = data[:950]
         test_data = data[950:]
+
+        return train_data, test_data
+
+class Collapsed_Tree_Data():
+
+    def __init__(self, n_data=1000, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3): # ("not" : dumbnot) has been removed for batching issues temporarily
+        self.gate_dict = gate_dict
+        self.num_node_features = (len(self.gate_dict) + 1) * ((2**(depth-1))-1)
+        self.num_classes = 2
+        self.batch_size=batch_size
+        self.depth = depth
+        self.n_data = n_data
+        setup_tree(n_data, batch_size, depth, path='../Data/Collapsed_Balanced_tree/')
+
+    def loader(self):
+
+        data_path = '../Data/Collapsed_Balanced_tree/'+str(self.depth)+'/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
+
+        picklefile = open(data_path, 'rb')
+        data = pickle.load(picklefile)
+        picklefile.close()
+
+        cutoff = (self.n_data*19)//20
+
+        train_data = data[:cutoff]
+        test_data = data[cutoff:]
 
         return train_data, test_data
 
