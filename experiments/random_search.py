@@ -1,24 +1,37 @@
 import sys
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from batch_behavioral_level_test import test_model
 from faux_behavioral_level_train import train_faux_behavioral as train_model
+
+'''
+This py file will perform a random seach over the hyperparameters of the "behavioral-level" GNN 
+(this being the GNN that processes 2 layers at a time)
+
+This will first run 'n_iterations' trials with uniformly random hyperparameters and save the best performing model,
+then this model will be run on the test data (newly generated during test) and will plot the performance at different depths
+
+This file also saves the data from the random search -- this being the hyperparameters = x and the accuracy = y
+this is so we may use that data for other hyperparameter tuning methods (training a model or bayesian optim)
+'''
 
 best_acc = 0
 
 best_params = (0,0,0,0)
 best_model = None
 
-n_iterations = 1000
+n_iterations = 2
 
-learning_rates = np.random.uniform(1e-6, 1e-3, n_iterations)
-weight_decays = np.random.uniform(1e-7, 1e-5, n_iterations)
-batch_size = 64
-hidden_sizes = np.random.randint(5, 100, n_iterations)
+learning_rates = np.random.uniform(1e-6, 1e-3, n_iterations)   # These ranges were found roughly by gridsearch
+weight_decays = np.random.uniform(1e-7, 1e-5, n_iterations)    # <-|
+batch_size = 64                                                # Keep this constant to keep from generating too much new data
+hidden_sizes = np.random.randint(5, 100, n_iterations)         # It is not clear if increasing the size of the GNN is beneficial as such
 device = "cpu"
 
-x = np.zeros(n_iterations,3)
-y = np.zeros(n_iterations)
+x = np.zeros((n_iterations,3))                                 # Where we save the hyperparameters from each run
+y = np.zeros(n_iterations)                                     # This is the accuracies of each round
 
 for i in range(n_iterations):
 
@@ -26,40 +39,50 @@ for i in range(n_iterations):
     wd = weight_decays[i]
     lr = learning_rates[i]
 
+
+    # This runs a full training loop with the random hyperparams and CONSTANT data (would be better to shuffle) 
     model, acc = train_model(batch_size=batch_size, n_data=1000, hidden_size=hs, lr=lr, weight_decay=wd, plot=False, save=False, device=device)
     print("hidden size:", hs, "weight decay:", wd, "learning rate:", lr)
     print("accuracy:", acc)
 
+
+    # Storing the data in x and y
     x[i][0] = hs
     x[i][1] = wd
     x[i][2] = lr
     y[i] = acc
 
+    # This will save the best model/hyperparams if the accuracy is best
     if acc > best_acc:
         best_acc = acc
         best_params = (hs, wd, lr)
         best_model = model
         print("This was the new best!")
 
+# Where the hyperparameter data will be stored
 save_path = '../Data/Hyperparam_Search/'
 
-if not os.path.exists(path):
+# Create dir and store data if it doesnt exist already
+if not os.path.exists(save_path):
 
-    os.makedirs(path)
+    os.makedirs(save_path)
 
     data = (x,y)
     
-    picklefile = open(path + 'parameters_to_acc.pt', wb)
+    picklefile = open(save_path + 'parameters_to_acc.pt', 'wb')
     pickle.dump(data, picklefile)
     picklefile.close()
 
+# This is to clear the model that is currently stored in memory (the last trial)
 del model
 
+# Unpack bets params stored in "best_params" -- unpacked vars follow naming convention from above instead of "best_lr" etc
 (hs, wd, lr) = best_params
 
 print("Best params -- hidden size:", hs, "weight decay:", wd, "learning rate:", lr)
 print("best train accuracy:", best_acc)
 
+# This is the testing method, the max depth tested will actually be 2*max_depth + 1 because of the quirks of the behavioral level
 depths, forward_times, perfs, eval_times = test_model(n_test=200, device=device, hidden_size=hs, max_depth=6, model=best_model)
 
 acc_fig, acc_ax = plt.subplots()

@@ -32,7 +32,7 @@ class EZData():
         self.batch_size=batch_size
         setup(n_data, batch_size)
 
-    def loader(self):
+    def loader(self, shuffle=True):
 
         data_path = '../Data/Simple_Gates/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
 
@@ -40,6 +40,9 @@ class EZData():
         picklefile = open(data_path, 'rb')
         data = pickle.load(picklefile)
         picklefile.close()
+
+        if shuffle:
+            random.shuffle(data)
 
         train_data = data[:950]
         test_data = data[950:]
@@ -57,15 +60,42 @@ class Collapsed_Tree_Data():
         self.n_data = n_data
         setup_tree(n_data, batch_size, depth, path='../Data/Collapsed_Balanced_tree/', collapsed=True)
 
-    def loader(self):
+    def loader(self, shuffle=True):
 
         data_path = '../Data/Collapsed_Balanced_tree/'+str(self.depth)+'/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
 
         picklefile = open(data_path, 'rb')
         data = pickle.load(picklefile)
+
+        if shuffle:
+            random.shuffle(data)
+
         picklefile.close()
 
         cutoff = (self.n_data*19)//20
+
+        train_data = data[:cutoff]
+        test_data = data[cutoff:]
+
+        return train_data, test_data
+
+class Hyperparam_data():
+
+    def __init__(self):
+        pass 
+
+    def loader(self, shuffle=True):
+
+        data_path = '../Data/Hyperparam_Search/parameters_to_acc.pt'
+
+        picklefile = open(data_path, 'rb')
+        data = pickle.load(picklefile)
+        picklefile.close()
+
+        if shuffle:
+            random.shuffle(data)
+
+        cutoff = (len(data)*19)//20
 
         train_data = data[:cutoff]
         test_data = data[cutoff:]
