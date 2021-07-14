@@ -151,7 +151,7 @@ class BalancedTree_gen():
 
     '''
 
-    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False, collapsed=False):
+    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False, collapsed=False, n_gates_combined=1):
 
         self.gate_dict = gate_dict
         self.num_node_features = len(self.gate_dict) + 1
@@ -160,23 +160,27 @@ class BalancedTree_gen():
         self.batch_size=batch_size
         self.print_vals = print_vals
         self.collapsed = collapsed
+        self.n_gates_combined = n_gates_combined
 
     def __iter__(self):
         return self
     
     def __next__(self):
 
-        x_batch = []
-        y_batch = []
-        time_batch = []
+        if self.collapsed:
+            x_batch = []
+            y_batch = []
+            time_batch = []
 
-        for b in range(self.batch_size):
-            x,y,t = self.gen_tree()
-            x_batch.append(x)
-            y_batch.append(y)
-            time_batch.append(t)
+            for b in range(self.batch_size):
+                x,y,t = self.gen_tree()
+                x_batch.append(x)
+                y_batch.append(y)
+                time_batch.append(t)
 
-        return Batch.from_data_list(x_batch), y_batch, time_batch
+            return Batch.from_data_list(x_batch), y_batch, time_batch
+
+        return self.gen_tree()
 
     def gen_tree(self):
 
@@ -301,7 +305,7 @@ class BalancedTree_gen():
         '''
 
         if gate_name in [0,1]:
-            gate_encoding = np.zeros(len(self.gate_dict) + 1)
+            gate_encoding = np.zeros((len(self.gate_dict) + 1) * self.n_gates_combined)
             gate_encoding[0] = gate_name
 
         elif gate_name in self.gate_name_list: 

@@ -16,11 +16,11 @@ batch_size = 32  # Batching creates a new larger graph with graph inputs
 dataset_wrapper = EZData(n_data=1000, batch_size=batch_size)  # EZ Data is a wrapper with gate operations that can be defined in the init
 train_data, test_data = dataset_wrapper.loader() 
 
-model = Simple_GNN(dataset_wrapper.num_node_features)
+model = Simple_GNN(dataset_wrapper.num_node_features, hidden_size=10)
 model.train()
 loss_metric = nn.BCEWithLogitsLoss()
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=3e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.07, weight_decay=3e-5)
 i=0
 losses = []
 accuracies = []

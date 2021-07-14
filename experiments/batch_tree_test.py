@@ -11,20 +11,20 @@ from data_generator import BalancedTree_gen
 from tqdm import tqdm
 from Models.simple_gate_level import Simple_GNN
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = "cpu"
-def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
+
+def test_model(path="../Trained_models/gate_level.pt", n_test=1, fig=None, ax=None, device="cuda"):
     
     correct = 0
     num_node_features = 6
+    n_test = 50
 
-    model = Simple_GNN(num_node_features=num_node_features)
+    model = Simple_GNN(num_node_features=num_node_features, hidden_size=10)
     model.to(device)
     model.load_state_dict(torch.load(path))
     model.eval()
 
 
-    depths = np.arange(17) + 2
+    depths = np.arange(15) + 3
     sim_times = np.ones(len(depths))
     batch_times = np.zeros(len(depths))
     forward_times = np.zeros(len(depths))
@@ -46,7 +46,7 @@ def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
             layers,y,eval_time = next(data)
 
             start = time.perf_counter()
-            out, b_time, f_time, m_time = batched_forward(layers, model)
+            out, b_time, f_time, m_time = batched_forward(layers, model, device)
             stop = time.perf_counter()
 
             # print("out:", out, "label:", y)
@@ -67,24 +67,31 @@ def test_model(path="../Trained_models/100_percent_model.pt", n_test=1):
 
     diffs = eval_times-forward_times
 
-    print(diffs)
+    if device == "cuda":
+        DEVICE_NAME = "GPU"
+    else:
+        DEVICE_NAME = "CPU"
 
-    fig, ax = plt.subplots()
-    ax.plot(depths, diffs, label="Time Difference")
+    if fig is None:
+        fig, ax = plt.subplots()
+        ax.plot(depths, eval_times, label="Python Interpreter")
+
+    # ax.plot(depths, diffs, label="Time Difference")
     # ax.plot(depths, batch_times, label="Time used to batch")
-    # ax.plot(depths, forward_times, label="GNN forward")
+    ax.plot(depths, forward_times/n_test, label="GNN - single depth at once ("+DEVICE_NAME+")")
     # ax.plot(depths, mask_times, label="Time to mask/encode output")
     # ax.plot(depths, sim_times, label="Batched GNN")
 
-    ax.set(xlabel='Depth of tree', ylabel='Time to evaluate (s)',
-        title='Temp')
+
+    ax.set(xlabel='Depth of tree', ylabel='Time to simulate (s)',
+        title='Time to simulate circuit by depth')
     ax.grid()
     ax.legend()
 
     fig.savefig("../Plots/You didnt change the title.png")
     plt.show()
 
-def batched_forward(layers, model):
+def batched_forward(layers, model, device):
 
     batching_time = 0
     forward_time = 0
@@ -93,17 +100,17 @@ def batched_forward(layers, model):
     for i in range(len(layers)-1, 0, -1):
 
 
-        mask = torch.from_numpy(np.arange(len(layers[i-1])) * 3)
+        mask = torch.from_numpy(np.arange(len(layers[i-1])) * 3).to(device)
 
         batch_start = time.perf_counter()
-        batch = batch_layers(layers) # batches the deepest two layers into usable data for the GNN
+        batch = batch_layers(layers, device) # batches the deepest two layers into usable data for the GNN
         batch.to(device)
         batch_stop = time.perf_counter()
 
         batching_time += batch_stop - batch_start
 
         forwards_start = time.perf_counter()
-        outs = model(batch)
+        outs = model(batch).to(device)
         forwards_end = time.perf_counter()
 
         forward_time += forwards_end-forwards_start
@@ -120,9 +127,9 @@ def batched_forward(layers, model):
 
 
         if len(layers) == 1:
-            print("batching time:", batching_time)
-            print("forward time:", forward_time)
-            print("masking time:", masking_time)
+            # print("batching time:", batching_time)
+            # print("forward time:", forward_time)
+            # print("masking time:", masking_time)
             return int(layers[0][0][0]), batching_time, forward_time, masking_time
 
 
@@ -144,23 +151,9 @@ def batched_forward(layers, model):
 #     return int(outs[0][0])
 
 
-def simplest_test(model):
-
-    x = torch.tensor([[0,0,0,1,0,0],[0,0,0,0,0,0],[1,0,0,0,0,0]], dtype=torch.float)
-    edge_index = torch.tensor([[1,2], [0,0]], dtype=torch.long)
-    dat = Data(x=x, edge_index=edge_index)
-
-    out = model(dat)
-
-    print(out)
-
-    out = torch.sigmoid(out[0][0]) > 0.5
-
-    print(out)
 
 
-
-def batch_layers(layers):
+def batch_layers(layers, device):
 
     batch_data = []
     adj_list = torch.tensor([[1,2], [0,0]], dtype=torch.long)
@@ -177,4 +170,4 @@ def reencode(outs):
     return (torch.sigmoid(outs) > 0.5).float()
 
 
-test_model(path="../Trained_models/gate_level.pt", n_test=1)
+test_model(path="../Trained_models/gate_level.pt", n_test=50)

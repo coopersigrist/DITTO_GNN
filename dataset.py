@@ -55,7 +55,7 @@ class Collapsed_Tree_Data():
         self.batch_size=batch_size
         self.depth = depth
         self.n_data = n_data
-        setup_tree(n_data, batch_size, depth, path='../Data/Collapsed_Balanced_tree/')
+        setup_tree(n_data, batch_size, depth, path='../Data/Collapsed_Balanced_tree/', collapsed=True)
 
     def loader(self):
 
