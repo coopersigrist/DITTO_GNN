@@ -126,13 +126,14 @@ def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree', collap
     path += "/" + str(depth) + "/" +str(batch_size) + "/"
 
     if not os.path.exists(path):
+        print("path doesnt exit, generating")
         os.makedirs(path)
     
-        gen_BalancedTree_data(n_data, batch_size, depth, path) 
+        gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed=collapsed) 
 
-def gen_BalancedTree_data(n_data, batch_size, depth, path):
+def gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed):
 
-    generator = BalancedTree_gen(batch_size=batch_size, depth=depth, print_vals=False, collapsed=True)
+    generator = BalancedTree_gen(batch_size=batch_size, depth=depth, print_vals=False, collapsed=collapsed)
 
     data_list = []
 
@@ -226,7 +227,8 @@ class BalancedTree_gen():
         x = np.array(layers)
 
         if self.collapsed:
-            x = self.collapse(x)
+            # x = self.collapse(x) # TESTING ALTERNATIVE
+            x = self.alt_collapse(x)
 
             label = np.zeros(self.num_node_features)
             label[0] = y
@@ -268,17 +270,17 @@ class BalancedTree_gen():
         i.e. a OR of (AND of 1 and 0) and (XOR of 1 and 1 ) would be a node with input 1,0,1,1 and and ecoding of all the gates used
         '''
 
+        self.num_node_features = ((len(self.gate_dict)) * ((2**(self.depth-1))-1)) + 1
         new_input_list = []
-        gate_encoding = []
+        gate_encoding = [0]
         edge_index = []
 
         # appends each gate operation to the new_input list (in order from top-> bottom, left-> right)
         for layer in layers[:-1]:
             for elem in layer:
-                for bit in elem:
+                for bit in elem[1:]:
                     gate_encoding.append(bit)
-        
-        self.num_node_features = len(gate_encoding)
+
         new_input_list.append(gate_encoding)
 
         # appends each of the inputs in order from left to right
@@ -287,8 +289,11 @@ class BalancedTree_gen():
             new_in[0] = elem[0]
             new_input_list.append(new_in)
 
-        for num in range(len(new_input_list) - 1):
+        # Makes an edge for each input to the root compund gate
+        for num in range(len(new_input_list)-1):
             edge_index.append([num+1, 0])
+
+        print("gate encoding",gate_encoding)
 
         x = torch.tensor(new_input_list, dtype=torch.float)
         edge_list = torch.tensor(edge_index, dtype=torch.long)
@@ -296,6 +301,52 @@ class BalancedTree_gen():
         dat = Data(x=x, edge_index=edge_list.t().contiguous())
         
         return dat
+
+    def alt_collapse(self, layers):
+
+            '''
+            Collapses the full balanced tree into a single node (which will be a pytorch Geometric Data object instead of lists)
+
+            i.e. a OR of (AND of 1 and 0) and (XOR of 1 and 1 ) would be a node with input 1,0,1,1 and and ecoding of all the gates used
+
+            This is an alternate (one-hot) method of collapsing
+            '''
+
+            self.num_node_features = (len(self.gate_dict) ** (2 **(self.depth-1) -1)) + 1
+            new_input_list = []
+            gate_encoding = [0]
+            edge_index = []
+
+            # appends each gate operation to the new_input list (in order from top-> bottom, left-> right)
+            factor = 1
+            place = 0
+            for layer in layers[:-1]:
+                for elem in layer:
+                    ind = np.where(elem == 1)
+                    place += int(ind[0]-1) * factor
+                    factor *= len(self.gate_dict)
+
+            gate_encoding = np.zeros(self.num_node_features)
+            gate_encoding[place] = 1
+
+            new_input_list.append(gate_encoding)
+
+            # appends each of the inputs in order from left to right
+            for elem in layers[-1]:
+                new_in = np.zeros(self.num_node_features)
+                new_in[0] = elem[0]
+                new_input_list.append(new_in)
+
+            # Makes an edge for each input to the root compund gate
+            for num in range(len(new_input_list)-1):
+                edge_index.append([num+1, 0])
+
+            x = torch.tensor(new_input_list, dtype=torch.float)
+            edge_list = torch.tensor(edge_index, dtype=torch.long)
+
+            dat = Data(x=x, edge_index=edge_list.t().contiguous())
+            
+            return dat
 
 
     def encode(self, gate_name):
@@ -328,4 +379,4 @@ class BalancedTree_gen():
 if __name__ == "__main__":
 
     # setup(n_data=1000, batch_size=12, path='Data/Simple_Gates')
-    setup_tree(n_data=1000, batch_size=32, depth=3, path='/Data/Collapsed_Balanced_tree', collapsed=True)
+    setup_tree(n_data=1000, batch_size=32, depth=3, path='Data/Collapsed_Balanced_tree', collapsed=True)

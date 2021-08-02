@@ -1,5 +1,6 @@
 import sys
 import os
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +23,7 @@ best_acc = 0
 best_params = (0,0,0,0)
 best_model = None
 
-n_iterations = 2
+n_iterations = 1000
 
 learning_rates = np.random.uniform(1e-6, 1e-3, n_iterations)   # These ranges were found roughly by gridsearch
 weight_decays = np.random.uniform(1e-7, 1e-5, n_iterations)    # <-|
@@ -43,8 +44,7 @@ for i in range(n_iterations):
     # This runs a full training loop with the random hyperparams and CONSTANT data (would be better to shuffle) 
     model, acc = train_model(batch_size=batch_size, n_data=1000, hidden_size=hs, lr=lr, weight_decay=wd, plot=False, save=False, device=device)
     print("hidden size:", hs, "weight decay:", wd, "learning rate:", lr)
-    print("accuracy:", acc)
-
+    print("training accuracy:", acc)
 
     # Storing the data in x and y
     x[i][0] = hs

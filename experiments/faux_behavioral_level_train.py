@@ -13,6 +13,12 @@ from Models.simple_gate_level import Simple_GNN
 
 def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, weight_decay=3e-5, plot=False, save=False, device="cuda"):
 
+    '''
+    This method trains a GNN to simulate circuits build of compund gate operations, such as: ((x1 AND x2) OR (x3 XOR x4)) being a single node
+
+    params:
+    '''
+
     depth = 3 # Depth of the tree that we are collpasing
 
     dataset_wrapper = Collapsed_Tree_Data(n_data=n_data, batch_size=batch_size, depth=depth)  # this is a wrapper with gate operations that can be defined in the init

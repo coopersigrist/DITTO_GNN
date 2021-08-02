@@ -15,7 +15,7 @@ from Models.simple_gate_level import Simple_GNN
 def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=8, model=None, plot=True):
     
     correct = 0
-    num_node_features = 18
+    num_node_features = 19
     hidden_size = hidden_size
 
     if model is None: # if model is None then we load the saved model, else the model is passed
@@ -32,6 +32,8 @@ def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None
     mask_times = np.zeros(len(depths))
     eval_times = np.zeros(len(depths))
     perfs = np.ones(len(depths))
+    ones = np.zeros(len(depths))
+    zeros = np.zeros(len(depths))
 
 
     for d, depth in enumerate(depths):
@@ -60,7 +62,12 @@ def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None
             batch_times[d] += b_time
             forward_times[d] += f_time
             mask_times[d] += m_time
-            eval_times[d] += eval_time 
+            eval_times[d] += eval_time
+
+            if y == 1:
+                ones[d] += 1  
+            else:
+                zeros[d] += 1
         
         print("total time:", total_time)
         sim_times[d] = total_time
@@ -69,27 +76,30 @@ def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None
 
         print("got",correct,"out of",n_test,"  for",(correct/n_test) * 100,"%", "on depth:", depth) 
 
-    # if plot:
-        # if(fig is None):
-        #     fig, ax = plt.subplots()
-        # # ax.plot(depths, diffs, label="Time Difference")
-        # # ax.plot(depths, batch_times, label="Time used to batch")
+    if plot:
+        if(fig is None):
+            fig, ax = plt.subplots()
+        # ax.plot(depths, diffs, label="Time Difference")
+        # ax.plot(depths, batch_times, label="Time used to batch")
         # if device == "cuda":
         #     ax.plot(depths, eval_times/n_test, label="Python Interpreter")
-        # # plt.errorbar(depths, eval_times, eval_var, linestyle='None', marker='^')
-        # # ax.plot(depths, forward_times/n_test, label="GNN - two layer (" + device +")")
-        # # plt.errorbar(depths, forward_times, forward_var, linestyle='None', marker='^')
-        # # ax.plot(depths, mask_times, label="Time to mask/encode output")
+        # plt.errorbar(depths, eval_times, eval_var, linestyle='None', marker='^')
+        # ax.plot(depths, forward_times/n_test, label="GNN - two layer (" + device +")")
+        # plt.errorbar(depths, forward_times, forward_var, linestyle='None', marker='^')
+        # ax.plot(depths, mask_times, label="Time to mask/encode output")
         # ax.plot(depths, perfs, label="Accuracy of simulation (Avg over 50 trials)")
+        ax.bar(depths, ones, label="Number of 'one' labels")
+        ax.bar(depths+0.8, zeros, label="Number of 'zero' labels")
+
 
         # plt.yscale('log')
-        # if fig is None:
-        #     ax.set(xlabel='Depth of tree', ylabel='Accuracy (%)',
-        #         title='Accuracy of Two-layer method vs Depth')
-        #     ax.grid()
-        #     ax.legend()
-        #     fig.savefig("../Plots/You didnt change the title.png")
-        #     plt.show()
+
+        ax.set(xlabel='Depth of tree', ylabel='Count of different Labels',
+            title='Counts of difference final labels by depth')
+        # ax.grid()
+        ax.legend()
+        fig.savefig("../Plots/Counts of labels.png")
+        plt.show()
 
     return depths, forward_times, perfs, eval_times
     
@@ -166,4 +176,5 @@ def reencode(outs):
 
 
 if __name__ == "__main__":
+    test_model(path="../Trained_models/faux_behave_level.pt", n_test=100, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=6, model=None, plot=True)
     pass
