@@ -51,20 +51,32 @@ class EZData():
 
 class Collapsed_Tree_Data():
 
-    def __init__(self, n_data=1000, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3): # ("not" : dumbnot) has been removed for batching issues temporarily
+    def __init__(self, n_data=1000, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, alt=False): # ("not" : dumbnot) has been removed for batching issues temporarily
         self.gate_dict = gate_dict
-        # self.num_node_features = ((len(self.gate_dict)) * ((2**(depth-1))-1)) + 1
-        self.num_node_features = (len(self.gate_dict) ** (2 **(depth-1) -1)) + 1 ## ALTERNATIVE METHOD
+        self.num_node_features = ((len(self.gate_dict)) * ((2**(depth-1))-1)) + 1
+       
+        if alt:
+            self.num_node_features = (len(self.gate_dict) ** (2 **(depth-1) -1)) + 1 ## ALTERNATIVE METHOD
+
         print("num_node_features =", self.num_node_features)
         self.num_classes = 2
         self.batch_size=batch_size
         self.depth = depth
         self.n_data = n_data
-        setup_tree(n_data, batch_size, depth, path='../Data/Alt_Collapsed_Balanced_tree/', collapsed=True)
+        self.alt = alt
+        
+        if alt:
+            setup_tree(n_data, batch_size, depth, path='../Data/Alt_Collapsed_Balanced_tree/', collapsed=True, alt=alt)
+        else: 
+            setup_tree(n_data, batch_size, depth, path='../Data/Collapsed_Balanced_tree/', collapsed=True, alt=alt)
 
     def loader(self, shuffle=True):
 
-        data_path = '../Data/Alt_Collapsed_Balanced_tree/'+str(self.depth)+'/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
+        if self.alt:
+            data_path = '../Data/Alt_Collapsed_Balanced_tree/'+str(self.depth)+'/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
+        else:
+            data_path = '../Data/Collapsed_Balanced_tree/'+str(self.depth)+'/'+str(self.batch_size)+'/batch_size_'+str(self.batch_size)
+
 
         picklefile = open(data_path, 'rb')
         data = pickle.load(picklefile)

@@ -6,12 +6,13 @@ import torch.nn as nn
 import plotly.graph_objects as go
 from torch_geometric.data import Data, Batch
 from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
 sys.path.append('../')
 from dataset import Collapsed_Tree_Data
 from tqdm import tqdm
-from Models.simple_gate_level import Simple_GNN
+from Models.simple_gate_level import Simple_GNN, Bigger_GNN
 
-def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, weight_decay=3e-5, plot=False, save=False, device="cuda"):
+def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, weight_decay=3e-5, plot=False, save=False, device="cuda", alt=False):
 
     '''
     This method trains a GNN to simulate circuits build of compund gate operations, such as: ((x1 AND x2) OR (x3 XOR x4)) being a single node
@@ -21,10 +22,11 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
 
     depth = 3 # Depth of the tree that we are collpasing
 
-    dataset_wrapper = Collapsed_Tree_Data(n_data=n_data, batch_size=batch_size, depth=depth)  # this is a wrapper with gate operations that can be defined in the init
+    dataset_wrapper = Collapsed_Tree_Data(n_data=n_data, batch_size=batch_size, depth=depth, alt=alt)  # this is a wrapper with gate operations that can be defined in the init
     train_data, test_data = dataset_wrapper.loader() 
 
     model = Simple_GNN(dataset_wrapper.num_node_features, hidden_size=hidden_size).to(device)
+    # model = Bigger_GNN(dataset_wrapper.num_node_features, hidden_size=hidden_size).to(device)
     model.train()
     loss_metric = nn.BCEWithLogitsLoss()
 
@@ -32,6 +34,8 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
     i=0
     losses = []
     accuracies = []
+    one_labels = 0
+    zero_labels = 0
 
     mask = torch.from_numpy(np.arange(batch_size) * 5).to(device)
 
@@ -41,6 +45,7 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
         (x,y,_) = data
 
         x = x.to(device)
+        y = torch.FloatTensor(y).to(device)
 
         out = model(x)
 
@@ -49,7 +54,15 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
 
         # print("output:", out, "label:", y)
 
-        loss = loss_metric(out, torch.FloatTensor(y).to(device))
+        loss = loss_metric(out[:,0], y[:,0])
+
+        one_labels += (y[:,0] == 1).sum()
+        zero_labels += (y[:,0] == 0).sum()
+
+        # print("output:", out[:,0])
+        # print("label:", y[:,0])
+        # print("loss:", loss.item())
+
         loss.backward()
         optimizer.step()
         losses.append(loss.detach())
@@ -84,21 +97,10 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
         fig.update_yaxes(title_text="Accuracy", secondary_y=True)
         fig.show()
 
-    # model.eval()
-    # i=0
-    # correct = 0
-    # total = 0
-    # for (x,y,_) in test_data:
-
-    #     out = model(x).index_select(0, mask)
-    #     for ind in range(len(y)): 
-    #         single_out = torch.sigmoid(out[ind][0]) > 0.5
-    #         print("output:",single_out," Label:", y[ind][0])
-    #         correct += (int(single_out) == y[ind][0])
-    #         total += 1
-
-    # print("correct:",correct,"total:",total)
-    # print("test acc:", correct/total)
+    # plt.bar("0", zero_labels, width=0.5)
+    # plt.bar("1", one_labels, width=0.5)
+    # plt.title("Number of occurences of output values in train data (2 layer composite gates)")
+    # plt.show()
 
     if save:
         torch.save(model.state_dict(), "../Trained_models/faux_behave_level.pt")
@@ -106,5 +108,5 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
     return model, accuracies[-1]
 
 if __name__ == "__main__":
-    train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, weight_decay=3e-5, plot=True, save=False, device="cpu")
+    train_faux_behavioral(batch_size=32, n_data=3000, hidden_size=50, lr=0.08, weight_decay=3e-6, plot=True, save=True, device="cpu", alt=False)
     pass

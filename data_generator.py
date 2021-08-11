@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import numpy as np
 from torch_geometric.nn import GCNConv
 from torch_geometric.data import Data, Batch
+from tqdm import tqdm
 import torch.nn as nn
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -121,7 +122,7 @@ class EZData_gen():
 
         return gate_encoding
 
-def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree', collapsed=False):
+def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree', collapsed=False, alt=False):
 
     path += "/" + str(depth) + "/" +str(batch_size) + "/"
 
@@ -129,15 +130,15 @@ def setup_tree(n_data, batch_size, depth=3, path='../Data/Balanced_tree', collap
         print("path doesnt exit, generating")
         os.makedirs(path)
     
-        gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed=collapsed) 
+        gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed=collapsed, alt=alt) 
 
-def gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed):
+def gen_BalancedTree_data(n_data, batch_size, depth, path, collapsed, alt):
 
-    generator = BalancedTree_gen(batch_size=batch_size, depth=depth, print_vals=False, collapsed=collapsed)
+    generator = BalancedTree_gen(batch_size=batch_size, depth=depth, print_vals=False, collapsed=collapsed, alt=alt)
 
     data_list = []
 
-    for i in range(n_data):
+    for i in tqdm(range(n_data)):
         data_list.append(next(generator))
 
     picklefile = open(path + 'batch_size_'+str(batch_size), 'wb')
@@ -152,7 +153,7 @@ class BalancedTree_gen():
 
     '''
 
-    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False, collapsed=False, n_gates_combined=1):
+    def __init__(self, gate_dict={"xor": xor, "and": iand, "or":ior, "nand":nand, "nor":nor}, batch_size=1, depth=3, print_vals=False, collapsed=False, n_gates_combined=1, alt=False):
 
         self.gate_dict = gate_dict
         self.num_node_features = len(self.gate_dict) + 1
@@ -162,6 +163,7 @@ class BalancedTree_gen():
         self.print_vals = print_vals
         self.collapsed = collapsed
         self.n_gates_combined = n_gates_combined
+        self.alt = alt
 
     def __iter__(self):
         return self
@@ -227,8 +229,11 @@ class BalancedTree_gen():
         x = np.array(layers)
 
         if self.collapsed:
-            # x = self.collapse(x) # TESTING ALTERNATIVE
-            x = self.alt_collapse(x)
+            if self.alt:
+                x = self.alt_collapse(x) # TESTING ALTERNATIVE
+            else:
+                x = self.collapse(x) 
+
 
             label = np.zeros(self.num_node_features)
             label[0] = y
@@ -292,8 +297,11 @@ class BalancedTree_gen():
         # Makes an edge for each input to the root compund gate
         for num in range(len(new_input_list)-1):
             edge_index.append([num+1, 0])
+        
+        # This connects each pair of inputs that were originally part inputted to the same gate 
+        for i in range((self.depth - 2)**2):
+            edge_index.append([(2*i)+1, (2*i)+2 ])
 
-        print("gate encoding",gate_encoding)
 
         x = torch.tensor(new_input_list, dtype=torch.float)
         edge_list = torch.tensor(edge_index, dtype=torch.long)

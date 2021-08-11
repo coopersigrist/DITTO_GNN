@@ -12,10 +12,14 @@ from tqdm import tqdm
 from Models.simple_gate_level import Simple_GNN
 
 
-def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=8, model=None, plot=True):
+def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=8, model=None, plot=True, collapsed=False, alt=False):
     
     correct = 0
-    num_node_features = 19
+    num_node_features = 16
+
+    if alt:
+        num_node_features = 126 # This is the long one-hot encoding
+
     hidden_size = hidden_size
 
     if model is None: # if model is None then we load the saved model, else the model is passed
@@ -38,7 +42,7 @@ def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None
 
     for d, depth in enumerate(depths):
 
-        data = BalancedTree_gen(depth=depth, print_vals=False, collapsed=False, n_gates_combined=3)
+        data = BalancedTree_gen(depth=depth, print_vals=False, collapsed=collapsed, n_gates_combined=3, alt=alt)
 
         total_time = 0
         correct = 0
@@ -50,6 +54,8 @@ def test_model(path="../Trained_models/faux_behave_level.pt", n_test=1, fig=None
 
             # simplest_test(model)  # When model wasn't loading correctly this was useful debugging
             layers,y,eval_time = next(data)
+
+            print(layers)
 
             start = time.perf_counter()
             out, b_time, f_time, m_time = batched_forward(layers, model, device)
@@ -176,5 +182,5 @@ def reencode(outs):
 
 
 if __name__ == "__main__":
-    test_model(path="../Trained_models/faux_behave_level.pt", n_test=100, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=6, model=None, plot=True)
+    test_model(path="../Trained_models/faux_behave_level.pt", n_test=100, fig=None, ax=None, device="cuda", hidden_size=50, max_depth=6, model=None, plot=True, alt=True)
     pass

@@ -23,33 +23,34 @@ best_acc = 0
 best_params = (0,0,0,0)
 best_model = None
 
-n_iterations = 1000
+n_iterations = 1
 
-learning_rates = np.random.uniform(1e-6, 1e-3, n_iterations)   # These ranges were found roughly by gridsearch
-weight_decays = np.random.uniform(1e-7, 1e-5, n_iterations)    # <-|
+learning_rates = np.random.uniform(1e-3, 1e-1, n_iterations)   # These ranges were found roughly by gridsearch
+weight_decays = np.random.uniform(1e-7, 1e-4, n_iterations)    # <-|
 batch_size = 64                                                # Keep this constant to keep from generating too much new data
-hidden_sizes = np.random.randint(5, 100, n_iterations)         # It is not clear if increasing the size of the GNN is beneficial as such
+hidden_sizes = 50                                              # It is not clear if increasing the size of the GNN is beneficial as such
 device = "cpu"
+alt = False                                                     # This is whether to use an alternative method for data collapsing (big one-hot encoding)
 
-x = np.zeros((n_iterations,3))                                 # Where we save the hyperparameters from each run
+x = np.zeros((3,n_iterations))                                 # Where we save the hyperparameters from each run
 y = np.zeros(n_iterations)                                     # This is the accuracies of each round
 
 for i in range(n_iterations):
 
-    hs = hidden_sizes[i]
+    hs = hidden_sizes
     wd = weight_decays[i]
     lr = learning_rates[i]
 
 
     # This runs a full training loop with the random hyperparams and CONSTANT data (would be better to shuffle) 
-    model, acc = train_model(batch_size=batch_size, n_data=1000, hidden_size=hs, lr=lr, weight_decay=wd, plot=False, save=False, device=device)
+    model, acc = train_model(batch_size=batch_size, n_data=1000, hidden_size=hs, lr=lr, weight_decay=wd, plot=False, save=False, device=device, alt=alt)
     print("hidden size:", hs, "weight decay:", wd, "learning rate:", lr)
     print("training accuracy:", acc)
 
     # Storing the data in x and y
-    x[i][0] = hs
-    x[i][1] = wd
-    x[i][2] = lr
+    x[0][i] = hs
+    x[1][i] = wd
+    x[2][i] = lr
     y[i] = acc
 
     # This will save the best model/hyperparams if the accuracy is best
@@ -83,13 +84,24 @@ print("Best params -- hidden size:", hs, "weight decay:", wd, "learning rate:", 
 print("best train accuracy:", best_acc)
 
 # This is the testing method, the max depth tested will actually be 2*max_depth + 1 because of the quirks of the behavioral level
-depths, forward_times, perfs, eval_times = test_model(n_test=200, device=device, hidden_size=hs, max_depth=6, model=best_model)
+# depths, forward_times, perfs, eval_times = test_model(n_test=200, device=device, hidden_size=hs, max_depth=6, model=best_model, alt=alt)
 
-acc_fig, acc_ax = plt.subplots()
-acc_ax.plot(depths, perfs, label="Best found model")
-acc_ax.set(xlabel='Depth of tree', ylabel='Accuracy (%)',
-    title='Accuracy of best found model (50 trials)')
-acc_ax.grid()
-acc_ax.legend()
-acc_fig.savefig("../Plots/Best Model Accuracy.png")
+# acc_fig, acc_ax = plt.subplots()
+# acc_ax.plot(depths, perfs, label="Best found model")
+# acc_ax.set(xlabel='Depth of tree', ylabel='Accuracy (%)',
+#     title='Accuracy of best found model (50 trials)')
+# acc_ax.grid()
+# acc_ax.legend()
+# acc_fig.savefig("../Plots/Best Model Accuracy.png")
+# plt.show()
+
+ 
+fig = plt.figure()
+ 
+# syntax for 3-D plotting
+ax = plt.axes(projection ='3d')
+ 
+# syntax for plotting
+ax.plot_surface(x[1], x[2], y, cmap ='viridis', edgecolor ='green')
+ax.set_title('hyperparam search results')
 plt.show()
