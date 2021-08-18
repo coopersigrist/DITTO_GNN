@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
+from .custom_gnn import PEGENConv
 
 
 
@@ -12,6 +13,28 @@ class Simple_GNN(torch.nn.Module):
 
         self.conv1 = GCNConv(num_node_features, hidden_size)
         self.conv2 = GCNConv(hidden_size, 1)
+
+        
+        self.pad = nn.ConstantPad1d((0,num_node_features-1), 0)
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+    
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = self.conv2(x, edge_index)
+
+        x = self.pad(x)
+
+        return x
+    
+class SimplePEGNN(torch.nn.Module):
+    def __init__(self, num_node_features,hidden_size=10):
+        super(SimplePEGNN, self).__init__()
+
+        self.conv1 = PEGENConv(num_node_features, hidden_size)
+        self.conv2 = PEGENConv(hidden_size, 1)
 
         
         self.pad = nn.ConstantPad1d((0,num_node_features-1), 0)
