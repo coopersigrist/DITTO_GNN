@@ -33,8 +33,8 @@ class SimplePEGNN(torch.nn.Module):
     def __init__(self, num_node_features,hidden_size=10):
         super(SimplePEGNN, self).__init__()
 
-        self.conv1 = PEGENConv(num_node_features, hidden_size)
-        self.conv2 = PEGENConv(hidden_size, 1)
+        self.conv1 = PEGENConv(num_node_features, hidden_size, aggr='positional')
+        self.conv2 = PEGENConv(hidden_size, 1, aggr='positional')
 
         
         self.pad = nn.ConstantPad1d((0,num_node_features-1), 0)
