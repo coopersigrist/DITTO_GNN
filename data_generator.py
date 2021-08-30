@@ -164,6 +164,7 @@ class BalancedTree_gen():
         self.collapsed = collapsed
         self.n_gates_combined = n_gates_combined
         self.alt = alt
+        self.input_connected = True
 
     def __iter__(self):
         return self
@@ -298,9 +299,10 @@ class BalancedTree_gen():
         for num in range(len(new_input_list)-1):
             edge_index.append([num+1, 0])
         
-        # This connects each pair of inputs that were originally part inputted to the same gate 
-        for i in range((self.depth - 2)**2):
-            edge_index.append([(2*i)+1, (2*i)+2 ])
+        if self.input_connected:
+            # This connects each pair of inputs that were originally part inputted to the same gate 
+            for i in range((self.depth - 2)**2):
+                edge_index.append([(2*i)+1, (2*i)+2 ])
 
 
         x = torch.tensor(new_input_list, dtype=torch.float)

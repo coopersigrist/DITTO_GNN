@@ -1,4 +1,4 @@
-
+from torch_geometric.data import Data, Batch
 
 class Component():
 
@@ -27,5 +27,42 @@ class Component():
             raise Excpetion("Tried to evaluate a leaf as an OP")
 
         return self.function(*args)
+
+    def get_all_computable(self):
+
+        if self.n_inputs == 0:
+            raise Exception("Iterated too far")
+        
+        should_add = True
+
+        for child in self.children:
+            if child.n_inputs != 0:
+                should_add = False
+
+        if should_add:
+            nodes = [self.embedding]
+            edge_list = []
+            for i, child in enumerate(self.children):
+                nodes.append(child.embedding)
+                edge_list.append([i+1, 0])
+            
+            x = torch.tensor(nodes, dtype=torch.float)
+            edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+            return Data(x=x, edge_index=edge_index), self
+
+        else:
+            list_of_computable = []
+            components = []
+            for child in self.children:
+                if child.n_inputs != 0:
+                    data, components = child.get_all_computable(list_of_computable)
+                    list_of_computable += data
+                    components += node
+            
+            return list_of_computable, components
+        
+
+
+
 
     

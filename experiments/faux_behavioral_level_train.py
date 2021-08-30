@@ -108,5 +108,5 @@ def train_faux_behavioral(batch_size=32, n_data=1000, hidden_size=50, lr=0.04, w
     return model, accuracies[-1]
 
 if __name__ == "__main__":
-    train_faux_behavioral(batch_size=32, n_data=3000, hidden_size=50, lr=0.08, weight_decay=3e-6, plot=True, save=True, device="cpu", alt=False)
+    train_faux_behavioral(batch_size=32, n_data=3000, hidden_size=50, lr=0.004, weight_decay=3e-6, plot=True, save=True, device="cpu", alt=False)
     pass

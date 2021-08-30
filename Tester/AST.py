@@ -75,7 +75,8 @@ class AST():
 
 
     def flatten(self, head):
-
+        # TODO -- flatten out areas of the circuit/graph that can be made into compound nodes that the GNN can be 
+        # trained or tested on
         pass
 
     def encode(self, name):

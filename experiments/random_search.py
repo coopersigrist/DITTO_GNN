@@ -23,12 +23,12 @@ best_acc = 0
 best_params = (0,0,0,0)
 best_model = None
 
-n_iterations = 1
+n_iterations = 100
 
-learning_rates = np.random.uniform(1e-3, 1e-1, n_iterations)   # These ranges were found roughly by gridsearch
-weight_decays = np.random.uniform(1e-7, 1e-4, n_iterations)    # <-|
+learning_rates = np.random.uniform(1e-3, 0.15, n_iterations)   # These ranges were found roughly by gridsearch
+weight_decays = np.random.uniform(1e-5, 1e-3, n_iterations)    # <-|
 batch_size = 64                                                # Keep this constant to keep from generating too much new data
-hidden_sizes = 50                                              # It is not clear if increasing the size of the GNN is beneficial as such
+hidden_sizes = 100                                              # It is not clear if increasing the size of the GNN is beneficial as such
 device = "cpu"
 alt = False                                                     # This is whether to use an alternative method for data collapsing (big one-hot encoding)
 
@@ -84,24 +84,24 @@ print("Best params -- hidden size:", hs, "weight decay:", wd, "learning rate:", 
 print("best train accuracy:", best_acc)
 
 # This is the testing method, the max depth tested will actually be 2*max_depth + 1 because of the quirks of the behavioral level
-# depths, forward_times, perfs, eval_times = test_model(n_test=200, device=device, hidden_size=hs, max_depth=6, model=best_model, alt=alt)
+depths, forward_times, perfs, eval_times = test_model(n_test=200, device=device, hidden_size=hs, max_depth=6, model=best_model, alt=alt)
 
-# acc_fig, acc_ax = plt.subplots()
-# acc_ax.plot(depths, perfs, label="Best found model")
-# acc_ax.set(xlabel='Depth of tree', ylabel='Accuracy (%)',
-#     title='Accuracy of best found model (50 trials)')
-# acc_ax.grid()
-# acc_ax.legend()
-# acc_fig.savefig("../Plots/Best Model Accuracy.png")
-# plt.show()
-
- 
-fig = plt.figure()
- 
-# syntax for 3-D plotting
-ax = plt.axes(projection ='3d')
- 
-# syntax for plotting
-ax.plot_surface(x[1], x[2], y, cmap ='viridis', edgecolor ='green')
-ax.set_title('hyperparam search results')
+acc_fig, acc_ax = plt.subplots()
+acc_ax.plot(depths, perfs, label="Best found model")
+acc_ax.set(xlabel='Depth of tree', ylabel='Accuracy (%)',
+    title='Accuracy of best found model (50 trials)')
+acc_ax.grid()
+acc_ax.legend()
+acc_fig.savefig("../Plots/Best Model Accuracy.png")
 plt.show()
+
+ 
+# fig = plt.figure()
+ 
+# # syntax for 3-D plotting
+# ax = plt.axes(projection ='3d')
+ 
+# # syntax for plotting
+# ax.plot_surface(x[1], x[2], y, cmap ='viridis', edgecolor ='green')
+# ax.set_title('hyperparam search results')
+# plt.show()

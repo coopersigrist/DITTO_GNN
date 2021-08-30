@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GATConv
 
 
 
@@ -10,8 +10,8 @@ class Simple_GNN(torch.nn.Module):
     def __init__(self, num_node_features,hidden_size=10):
         super(Simple_GNN, self).__init__()
 
-        self.conv1 = GCNConv(num_node_features, hidden_size)
-        self.conv2 = GCNConv(hidden_size, 1)
+        self.conv1 = GATConv(num_node_features, hidden_size)
+        self.conv2 = GATConv(hidden_size, 1)
 
         
         self.pad = nn.ConstantPad1d((0,num_node_features-1), 0)
